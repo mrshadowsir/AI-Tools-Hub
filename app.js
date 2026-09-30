@@ -1,4 +1,4 @@
-import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm";
 env.allowLocalModels=false;env.useBrowserCache=true;env.useWasmCache=true;
 const $=id=>document.getElementById(id);
 const cache=new Map();let categories=[],categoryModels=[],filteredModels=[],selectedModel="onnx-community/SmolLM2-360M-Instruct-ONNX",loaded=null,loadedTask="",loadedModel="",mode="chat",presets=null,imageBlob=null,audioBlob=null,videoUrl="",frameBlob=null,limit=100;
