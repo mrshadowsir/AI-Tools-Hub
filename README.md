@@ -14,7 +14,7 @@ This repository intentionally excludes:
 
 The model index only accepts public, non-gated repositories whose declared model license matches our conservative **OSI-approved-license allowlist**.
 
-> **Important:** OSI's Open Source AI Definition also requires sufficient training-data information, training/runtime code, and parameters. Therefore the automated model index is **license-qualified**, not a blanket OSI certification of every model entry. citeturn428002search0
+> **Important:** OSI's Open Source AI Definition also requires sufficient training-data information, training/runtime code, and parameters. Therefore the automated model index is **license-qualified**, not a blanket OSI certification of every model entry.
 
 ## 🗂️ AI Model Directory
 
@@ -49,7 +49,7 @@ No subscription or trial service is required for the software listed here; local
 
 ## 🏅 OSI-Validated Open-Source AI Systems
 
-OSI's published OSAID v1.0 validation report lists **Pythia, OLMo, Amber, CrystalCoder and T5** among the systems that passed its validation process. citeturn428002search11
+OSI's published OSAID v1.0 validation report lists **Pythia, OLMo, Amber, CrystalCoder and T5** among the systems that passed its validation process.
 
 ## 🔄 Automatic Updates
 
