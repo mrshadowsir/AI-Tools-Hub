@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import urllib.parse
 
 ROOT=Path(__file__).resolve().parent.parent
 APP_DIR=Path(__file__).resolve().parent
@@ -18,6 +19,37 @@ class ChatRequest(BaseModel):
     prompt:str
     task:str="chat"
     temperature:float=0.7
+
+@app.get("/api/catalog/search")
+def catalog_search(q: str = "", limit: int = 50):
+    q = q.strip().lower()
+    limit = max(1, min(limit, 200))
+    results = []
+    if not MODELS_DIR.exists():
+        return {"models": []}
+    for path in sorted(MODELS_DIR.glob("*.md")):
+        if not q:
+            continue
+        try:
+            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                if not line.startswith("|") or "**" not in line:
+                    continue
+                cols = [x.strip() for x in line.strip("|").split("|")]
+                if len(cols) < 7 or not cols[0].isdigit():
+                    continue
+                name = cols[1].replace("**", "").strip()
+                license_id = cols[3]
+                if q in name.lower():
+                    results.append({
+                        "name": name,
+                        "license": license_id,
+                        "category": path.stem,
+                    })
+                    if len(results) >= limit:
+                        return {"models": results}
+        except OSError:
+            continue
+    return {"models": results}
 
 def instruction(task):
     return {"chat":"Answer naturally and directly.","explain":"Explain clearly with useful examples.","summarize":"Summarize accurately and concisely.","rewrite":"Rewrite clearly while preserving meaning.","code":"Act as a coding assistant and provide practical correct code."}.get(task,"Answer directly.")
