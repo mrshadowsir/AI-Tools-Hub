@@ -3,6 +3,28 @@ env.allowLocalModels=false;env.useBrowserCache=true;env.useWasmCache=true;
 const $=id=>document.getElementById(id);
 const cache=new Map();let categories=[],categoryModels=[],filteredModels=[],selectedModel="onnx-community/SmolLM2-360M-Instruct-ONNX",loaded=null,loadedTask="",loadedModel="",mode="chat",presets=null,imageBlob=null,audioBlob=null,videoUrl="",frameBlob=null,limit=100;
 const HISTORY="ai-tools-hub-history-v3";
+const WEB_TEXT_MODELS=new Set(["onnx-community/SmolLM2-360M-Instruct-ONNX","onnx-community/Qwen2.5-0.5B-Instruct"]);
+function isBrowserTextModel(name){return WEB_TEXT_MODELS.has(name)}
+function syncLoadButton(){
+  const ready=isBrowserTextModel(selectedModel);
+  $("loadModel").disabled=!ready;
+  $("loadModel").textContent=ready?"⚡ Load model":"📚 Catalog only";
+}
+function selectModel(m){
+  selectedModel=m.name;
+  $("selectedModel").innerHTML="<b>"+m.name+"</b><span>"+m.family+" • "+m.license+" • "+m.category+"</span>";
+  paint();
+  status(isBrowserTextModel(m.name)?"Browser-ready model selected. Click Load model.":"Catalog model selected — this exact model is not confirmed browser/ONNX compatible. Choose a Browser-ready model to run it.");
+  syncLoadButton();
+}
+function loadSelectedTextModel(){
+  if(!isBrowserTextModel(selectedModel)){
+    status("This model is catalog-only here. Choose SmolLM2 360M or Qwen2.5 0.5B browser preset.","error");
+    return;
+  }
+  pipe("text-generation",selectedModel).catch(e=>status("Browser model failed to load: "+(e?.message||e),"error"));
+}
+
 function status(t,tone="normal"){const e=$("status");e.textContent=t;e.dataset.tone=tone}
 function add(role,t){const e=document.createElement("div");e.className="msg "+role;e.textContent=t;$("messages").appendChild(e);e.scrollIntoView({behavior:"smooth",block:"end"})}
 function msgs(){return [...$("messages").querySelectorAll(".msg")].map(e=>({role:e.classList.contains("user")?"user":"assistant",text:e.textContent}))}
