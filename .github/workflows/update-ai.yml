@@ -31,15 +31,11 @@ jobs:
       - name: Generate category-wise AI model directory
         run: python generate_uncensored_ai.py
 
-      - name: Replace generated directory
-        run: |
-          git rm -f OPEN_SOURCE_AI_MODELS.md || true
-          git add OPEN_SOURCE_AI_MODELS.md models/
-
-      - name: Commit and push
+      - name: Commit and push generated files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
