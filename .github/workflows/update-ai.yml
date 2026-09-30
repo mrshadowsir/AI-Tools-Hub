@@ -2,6 +2,11 @@ name: Update Strict Open-Source AI Directory
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "generate_open_source_ai.py"
+      - ".github/workflows/update-ai.yml"
   schedule:
     - cron: "0 0 * * 1"
 
