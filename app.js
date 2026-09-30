@@ -47,12 +47,129 @@ async function textRun(prompt){
 async function imageRun(){if(!imageBlob)return $("imageOutput").textContent="Choose an image first.";const p=await pipe($("imageTask").value==="caption"?"image-to-text":"image-classification",$("imageTask").value==="caption"?presets["image-caption"].model:presets["image-classify"].model);const o=await p(imageBlob,$("imageTask").value==="caption"?{max_new_tokens:128}:{top_k:5});$("imageOutput").textContent=JSON.stringify(o,null,2)}
 async function audioRun(){if(!audioBlob)return $("audioOutput").textContent="Choose audio first.";const p=await pipe("automatic-speech-recognition",presets.audio.model),u=URL.createObjectURL(audioBlob);try{$("audioOutput").textContent=(await p(u,{chunk_length_s:20,return_timestamps:true}))?.text||"No text"}finally{URL.revokeObjectURL(u)}}
 async function frameRun(){if(!frameBlob)return $("videoOutput").textContent="Capture a frame first.";const p=await pipe("image-to-text",presets["image-caption"].model);$("videoOutput").textContent=JSON.stringify(await p(frameBlob,{max_new_tokens:128}),null,2)}
-document.querySelectorAll(".mode").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$("category").onchange=async()=>{const c=categories.find(x=>x.name===$("category").value);if(c)await selectCategory(c)};$("modelSearch").oninput=render;$("moreModels").onclick=()=>{limit+=100;paint()};$("loadModel").onclick=loadSelectedTextModel;$("temperature").oninput=()=>$("tempValue").textContent=$("temperature").value;
+
+let agentStopped=false;
+function agentSet(id,text,active=false){
+  const e=$(id); if(e){e.textContent=text;e.parentElement?.classList.toggle("active",active);}
+}
+function agentReset(){
+  agentStopped=false;
+  ["agent-planner","agent-researcher","agent-critic","agent-writer"].forEach(id=>agentSet(id,"Waiting",false));
+  $("agentPlan").textContent="";$("agentResearch").textContent="";$("agentFinal").textContent="";
+  $("agentStatus").textContent="Team is idle.";
+}
+function agentStop(){
+  agentStopped=true;
+  $("agentStatus").textContent="Stopping after the current step…";
+}
+async function safeJson(url){
+  try{
+    const r=await fetch(url,{headers:{"Accept":"application/json"}});
+    if(!r.ok) return null;
+    return await r.json();
+  }catch{return null}
+}
+async function webResearch(terms){
+  const list=[...new Set((terms||[]).filter(Boolean))].slice(0,4);
+  const chunks=[];
+  await Promise.all(list.map(async q=>{
+    const [ddg,wiki]=await Promise.all([
+      safeJson("https://api.duckduckgo.com/?q="+encodeURIComponent(q)+"&format=json&no_html=1&skip_disambig=1"),
+      safeJson("https://en.wikipedia.org/w/api.php?action=opensearch&search="+encodeURIComponent(q)+"&limit=5&namespace=0&format=json&origin=*")
+    ]);
+    if(ddg){
+      if(ddg.AbstractText) chunks.push({type:"DuckDuckGo",query:q,title:ddg.Heading||q,text:ddg.AbstractText,url:ddg.AbstractURL||""});
+      for(const x of (ddg.RelatedTopics||[]).slice(0,3)) if(x.Text) chunks.push({type:"DuckDuckGo",query:q,title:x.Text,text:x.Text,url:x.FirstURL||""});
+    }
+    if(wiki?.[1]){
+      wiki[1].slice(0,5).forEach((title,i)=>chunks.push({type:"Wikipedia",query:q,title,text:"Wikipedia result: "+title,url:wiki[3]?.[i]||""}));
+    }
+  }));
+  return chunks.slice(0,20);
+}
+async function agentPrompt(prompt){
+  const old=mode;
+  mode="chat";
+  try{
+    const out=await textRun(prompt);
+    return generated(out);
+  }finally{mode=old}
+}
+function cleanJson(s){
+  const a=s.indexOf("{"),b=s.lastIndexOf("}");
+  if(a>=0&&b>a){try{return JSON.parse(s.slice(a,b+1))}catch{}}
+  return null;
+}
+async function runAgentTeam(){
+  const goal=$("agentGoal").value.trim();
+  if(!goal){$("agentStatus").textContent="Enter a task first.";return}
+  if(agentStopped)return;
+  setMode("agents");
+  $("runAgents").disabled=true;$("stopAgents").disabled=false;
+  $("agentStatus").textContent="Starting team…";
+  const depth=$("agentDepth").value;
+  if(!isBrowserTextModel(selectedModel)) selectedModel=presets.chat.model;
+  try{
+    agentReset();
+
+    agentSet("agent-planner","Planning…",true);
+    $("agentStatus").textContent="🧭 Planner is breaking the task into sub-tasks.";
+    const planText=await agentPrompt(
+      "You are the Planner agent. Break this task into a practical research workflow. Return ONLY JSON with keys: questions (array of up to "+(depth==="deep"?5:3)+"), search_terms (array of up to "+(depth==="deep"?5:3)+"), deliverables (array), risks (array). Task: "+goal
+    );
+    const plan=cleanJson(planText)||{questions:[goal],search_terms:[goal],deliverables:["A clear sourced answer"],risks:[]};
+    $("agentPlan").textContent=JSON.stringify(plan,null,2);
+    agentSet("agent-planner","Done",false);
+    if(agentStopped)return;
+
+    agentSet("agent-researcher","Searching…",true);
+    $("agentStatus").textContent="🔎 Researcher is gathering public source snippets.";
+    const extra=$("agentSources").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,10);
+    const sources=await webResearch([...(plan.search_terms||[]),...(plan.questions||[]).slice(0,3)]);
+    for(const u of extra){
+      try{
+        const r=await fetch(u,{redirect:"follow"});
+        if(r.ok){const t=(await r.text()).replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,6000);sources.push({type:"User URL",query:u,title:u,text:t,url:u})}
+      }catch{}
+    }
+    const sourcePack=JSON.stringify(sources,null,2);
+    const research=await agentPrompt(
+      "You are the Researcher agent. Use the task, plan and source snippets below. Cross-check claims, separate evidence from assumptions, and produce a research brief with numbered findings and source URLs. Do not invent sources.\nTASK:\n"+goal+"\nPLAN:\n"+JSON.stringify(plan)+"\nSOURCES:\n"+sourcePack
+    );
+    $("agentResearch").textContent=research+(sources.length?"\n\nSOURCE FEED:\n"+sources.map((s,i)=>"["+i+"] "+s.type+" — "+s.title+" — "+(s.url||"")).join("\n"):"\n\nNo external source snippets were returned; treat this as a model-only draft.");
+    agentSet("agent-researcher","Done • "+sources.length+" source snippets",false);
+    if(agentStopped)return;
+
+    agentSet("agent-critic","Checking…",true);
+    $("agentStatus").textContent="🧪 Critic is checking gaps and unsupported claims.";
+    const critique=await agentPrompt(
+      "You are the Critic agent. Audit this research brief against the original task. List unsupported claims, missing evidence, contradictions, outdated-risk items, and what must be fixed. Then give 3 concrete corrections.\nTASK:\n"+goal+"\nRESEARCH:\n"+research
+    );
+    $("agentResearch").textContent+="\n\nCRITIC:\n"+critique;
+    agentSet("agent-critic","Done",false);
+    if(agentStopped)return;
+
+    agentSet("agent-writer","Writing…",true);
+    $("agentStatus").textContent="✍️ Writer is assembling the final result.";
+    const final=await agentPrompt(
+      "You are the Writer agent. Produce the final answer for the user. Use the research and critique. Be accurate, practical and concise. Clearly separate verified facts, source-backed findings, and uncertain points. Include a Sources section with only URLs actually provided. Do not mention internal agent prompts.\nUSER TASK:\n"+goal+"\nRESEARCH:\n"+research+"\nCRITIQUE:\n"+critique+"\nSOURCE LIST:\n"+sources.map(s=>s.url).filter(Boolean).join("\n")
+    );
+    $("agentFinal").textContent=final;
+    agentSet("agent-writer","Done",false);
+    $("agentStatus").textContent="✅ Team finished. Planner + Researcher + Critic + Writer collaborated.";
+    saveHistory("Agent: "+goal.slice(0,50),[{role:"user",text:goal},{role:"assistant",text:final}]);
+  }catch(e){
+    $("agentStatus").textContent="Team error: "+(e?.message||e);
+  }finally{
+    $("runAgents").disabled=false;$("stopAgents").disabled=false;
+  }
+}
+\ndocument.querySelectorAll(".mode").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$("category").onchange=async()=>{const c=categories.find(x=>x.name===$("category").value);if(c)await selectCategory(c)};$("modelSearch").oninput=render;$("moreModels").onclick=()=>{limit+=100;paint()};$("loadModel").onclick=loadSelectedTextModel;$("temperature").oninput=()=>$("tempValue").textContent=$("temperature").value;
 $("textForm").onsubmit=async e=>{e.preventDefault();const p=$("prompt").value.trim();if(!p)return;add("user",p);$("prompt").value="";add("assistant","⏳");try{$("messages").lastElementChild.textContent=generated(await textRun(p));status("Done.","ok");saveHistory(p.slice(0,60),msgs())}catch(err){$("messages").lastElementChild.textContent="Error: "+(err?.message||err);status("Generation failed.","error")}};
 $("runCode").onclick=async()=>{const p=$("codePrompt").value.trim();if(!p)return;const old=mode;mode="code";try{$("codeOutput").textContent=generated(await textRun(p))}catch(e){$("codeOutput").textContent="Error: "+(e?.message||e)}finally{mode=old}};
 $("imageFile").onchange=()=>{const f=$("imageFile").files[0];if(!f)return;imageBlob=f;$("imagePreview").src=URL.createObjectURL(f);$("imagePreview").classList.remove("hidden")};$("analyzeImage").onclick=async()=>{try{await imageRun()}catch(e){$("imageOutput").textContent="Error: "+(e?.message||e)}};
 $("audioFile").onchange=()=>{const f=$("audioFile").files[0];if(!f)return;audioBlob=f;$("audioPreview").src=URL.createObjectURL(f);$("audioPreview").classList.remove("hidden")};$("transcribeAudio").onclick=async()=>{try{await audioRun()}catch(e){$("audioOutput").textContent="Error: "+(e?.message||e)}};
 $("videoFile").onchange=()=>{const f=$("videoFile").files[0];if(!f)return;videoUrl=URL.createObjectURL(f);const v=$("videoPreview");v.src=videoUrl;v.classList.remove("hidden");v.onloadedmetadata=()=>{$("videoTime").max=v.duration||0}};$("videoTime").oninput=()=>{$("videoPreview").currentTime=Number($("videoTime").value);$("videoTimeLabel").textContent=Number($("videoPreview").currentTime).toFixed(1)+"s"};$("captureFrame").onclick=()=>{const v=$("videoPreview"),c=$("videoCanvas");if(!v.videoWidth)return $("videoOutput").textContent="Choose a video first.";c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0,c.width,c.height);c.toBlob(b=>{frameBlob=b;$("framePreview").src=URL.createObjectURL(b);$("framePreview").classList.remove("hidden")},"image/jpeg",.85)};$("analyzeFrame").onclick=async()=>{try{await frameRun()}catch(e){$("videoOutput").textContent="Error: "+(e?.message||e)}};
-$("clearChat").onclick=()=>{$("messages").innerHTML='<div class="welcome"><h2>Chat cleared</h2><p>Select a model and start again.</p></div>'};$("clearHistory").onclick=()=>{localStorage.removeItem(HISTORY);history()};
+$("clearChat").onclick=()=>{$("messages").innerHTML='<div class="welcome"><h2>Chat cleared</h2><p>Select a model and start again.</p></div>'};$("runAgents").onclick=runAgentTeam;$("stopAgents").onclick=agentStop;$("clearHistory").onclick=()=>{localStorage.removeItem(HISTORY);history()};
 $("runtimeBadge").textContent=navigator.gpu?"⚡ WebGPU available":"CPU/WASM mode";document.body.dataset.mode="chat";
 try{presets=await fetch("./models.json").then(r=>r.json());categories=await fetch("./categories.json").then(r=>r.json());$("category").innerHTML=categories.map(c=>'<option value="'+c.name.replace(/"/g,"&quot;")+'">'+c.name+"</option>").join("");$("selectedModel").innerHTML="<b>"+selectedModel+"</b><span>Small + fast browser preset</span>";syncLoadButton();await selectCategory(categories[1]||categories[0])}catch(e){$("modelInfo").textContent="Setup error: "+(e?.message||e)};
