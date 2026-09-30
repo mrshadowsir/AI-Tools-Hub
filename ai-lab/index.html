@@ -16,6 +16,10 @@
 <aside class="sidebar">
 <label>Runtime</label>
 <select id="runtime"><option value="ollama">Ollama Local</option><option value="huggingface">Hugging Face Local</option></select>
+<label>Find an open-source model</label>
+<input id="search" placeholder="Search model e.g. Qwen, DeepSeek, Llama">
+<button id="searchBtn" class="secondary">Search catalog</button>
+<select id="catalog"></select>
 <label>Model</label>
 <div class="row"><select id="model"></select><button id="refresh">↻</button></div>
 <input id="hfModel" class="hidden" placeholder="Hugging Face model ID">
@@ -27,7 +31,7 @@
 <div id="status" class="status">Checking local runtime…</div>
 </aside>
 <section class="chat">
-<div id="messages" class="messages"><div class="welcome"><h2>Choose a local model and start.</h2><p>Ollama is the easiest path. Hugging Face Local can load supported text-generation models directly on your PC.</p></div></div>
+<div id="messages" class="messages"><div class="welcome"><h2>Choose a local model and start.</h2><p>Ollama is easiest. Hugging Face Local can load supported text-generation models on your PC.</p></div></div>
 <form id="chatForm" class="composer"><textarea id="prompt" rows="3" placeholder="Ask the model to do something…"></textarea><button type="submit" id="send">Send</button></form>
 </section>
 </main>
