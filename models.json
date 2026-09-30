@@ -1,12 +1,1 @@
-[
-  {
-    "id": "onnx-community/SmolLM2-360M-Instruct-ONNX",
-    "name": "SmolLM2 360M Instruct",
-    "note": "Small browser-friendly instruct model"
-  },
-  {
-    "id": "onnx-community/Qwen2.5-0.5B-Instruct",
-    "name": "Qwen2.5 0.5B Instruct",
-    "note": "Small general-purpose instruct model"
-  }
-]
+{"chat":{"task":"text-generation","model":"onnx-community/SmolLM2-360M-Instruct-ONNX","name":"SmolLM2 360M Instruct"},"code":{"task":"text-generation","model":"onnx-community/Qwen2.5-0.5B-Instruct","name":"Qwen2.5 0.5B Instruct"},"image-caption":{"task":"image-to-text","model":"Xenova/vit-gpt2-image-captioning","name":"ViT-GPT2 Image Captioning"},"image-classify":{"task":"image-classification","model":"onnx-community/mobilenetv4_conv_small.e2400_r224_in1k","name":"MobileNetV4"},"audio":{"task":"automatic-speech-recognition","model":"Xenova/whisper-tiny.en","name":"Whisper Tiny EN"}}
