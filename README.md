@@ -1,45 +1,41 @@
 # 🆓 Open-Source AI Hub
 
-## 🌐 Browser AI Lab
+## 📱 Termux — ONE COMMAND
 
-The repository contains a browser-based AI Lab. No Python package, paid API key, or account is required for the browser app itself.
+Paste this single command into Termux:
 
-### Start the server
-
-**Windows PowerShell**
-```powershell
-.start.ps1
+```bash
+curl -fsSL https://raw.githubusercontent.com/mrshadowsir/AI-Tools-Hub/main/termux-install.sh | bash
 ```
 
-**Windows CMD**
+It will:
+- update + upgrade Termux
+- install Git + Python
+- download/update this repository
+- start the web server
+- open the AI Hub in your browser when `termux-open-url` is available
+
+## 🖥️ Windows
+
+PowerShell:
+```powershell
+git clone https://github.com/mrshadowsir/AI-Tools-Hub.git
+cd AI-Tools-Hub
+.\start.ps1
+```
+
+CMD:
 ```bat
+git clone https://github.com/mrshadowsir/AI-Tools-Hub.git
+cd AI-Tools-Hub
 start.bat
 ```
 
-**Linux / macOS**
-```bash
-bash start.sh
-```
+## 🌐 Browser
 
-**Termux (Android)**
-```bash
-bash start-termux.sh
-```
+The AI Lab is a static browser app. Supported ONNX models run through Transformers.js in the browser; no paid API key is required.
 
-**Any terminal with Python 3**
-```bash
-python serve.py
-```
-
-The server prints the browser address and a LAN address. Open the displayed URL in your browser.
-
-### How it works
-
-The server only serves the web files. Supported ONNX models are loaded by Transformers.js and inference happens in the browser. The first model load downloads model files into the browser cache.
-
-### Browser model limitation
-
-Only browser-compatible ONNX models are directly runnable in the web app. The full open-source model directory contains many more models that may require a different runtime.
+The local server only serves the website files.
 
 ## 📚 Directory
 
