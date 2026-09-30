@@ -16,6 +16,11 @@ The model index only accepts public, non-gated repositories whose declared model
 
 > **Important:** OSI's Open Source AI Definition also requires sufficient training-data information, training/runtime code, and parameters. Therefore the automated model index is **license-qualified**, not a blanket OSI certification of every model entry.
 
+## 🚀 Run Open-Source AI
+
+- [🖥️ Open-Source AI Lab](./ai-lab/README.md) — local chat/workbench with Ollama and optional Hugging Face local inference. No paid API is required.
+- [▶️ START_AI_LAB.bat](./START_AI_LAB.bat) — one-click local launcher on Windows.
+
 ## 🗂️ AI Model Directory
 
 - [🧠 Open-Source AI Model Index](./OPEN_SOURCE_AI_MODELS.md)
