@@ -1,24 +1,25 @@
 # 🤖 AI Tools Hub
+
 > Important AI tools and official links — all in one place.
 
-> ## 🧠 AI Assistants
-# 🤖 AI Tools Hub
+## 🧭 AI Model Directory
 
-> A collection of important AI tools, models, coding agents, research tools, image/video generators, audio AI, and developer platforms — all in one place.
+- [🆓 Open-Source AI Model Directory](./OPEN_SOURCE_AI_MODELS.md) — automatically updated from public Hugging Face model metadata.
+- [🔓 Less-Filtered / Uncensored AI](./UNCENSORED_AI.md) — legacy generated list, if present.
 
 ## 📌 Categories
 
-* 🧠 AI Assistants
-* 🔎 AI Search & Research
-* 💻 AI Coding & Development
-* 🎨 AI Image
-* 🎬 AI Video
-* 🎙️ AI Voice & Audio
-* 📚 AI Study & Documents
-* 📊 AI Productivity
-* 🧩 AI Agents & Automation
-* 🧪 AI APIs & Developer Platforms
-* 🖥️ Local / Open-Source AI
+- 🧠 AI Assistants
+- 🔎 AI Search & Research
+- 💻 AI Coding & Development
+- 🎨 AI Image
+- 🎬 AI Video
+- 🎙️ AI Voice & Audio
+- 📚 AI Study & Documents
+- 📊 AI Productivity
+- 🧩 AI Agents & Automation
+- 🧪 AI APIs & Developer Platforms
+- 🖥️ Local / Open-Source AI
 
 ---
 
