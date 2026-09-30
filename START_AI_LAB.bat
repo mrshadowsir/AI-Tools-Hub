@@ -12,5 +12,5 @@ call ".venv\Scripts\activate.bat"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 start "" http://127.0.0.1:8000
-python -m uvicorn ai-lab.server:app --host 127.0.0.1 --port 8000
+python -m uvicorn server:app --app-dir ai-lab --host 127.0.0.1 --port 8000
 pause
