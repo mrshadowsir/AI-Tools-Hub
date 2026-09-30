@@ -1,4 +1,4 @@
-name: Update Open-Source AI Model Directory
+name: Update Strict Open-Source AI Directory
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
           pip install --upgrade huggingface_hub
 
       - name: Generate category-wise AI model directory
-        run: python generate_uncensored_ai.py
+        run: python generate_open_source_ai.py
 
       - name: Commit and push generated files
         run: |
