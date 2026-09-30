@@ -1,37 +1,47 @@
 # 🆓 Open-Source AI Hub
 
-> A directory for **free, self-hostable, open-source AI software** and **open-license AI model repositories**.
+## 🌐 Browser AI Lab
 
-## 🌐 Run AI in the Browser
+The repository contains a browser-based AI Lab. No Python package, paid API key, or account is required for the browser app itself.
 
-**GitHub Pages web app:** https://mrshadowsir.github.io/AI-Tools-Hub/
+### Start the server
 
-The web AI Lab runs supported ONNX models directly in the browser using Transformers.js. No paid API key is required. The first model load downloads weights from Hugging Face and stores them in browser cache; inference runs on the user's device.
+**Windows PowerShell**
+```powershell
+.start.ps1
+```
 
-- [🧠 Open-Source AI Lab](./ai-lab/)
-- [🗂️ Full Open-Source Model Index](./OPEN_SOURCE_AI_MODELS.md)
-- [🛠️ Open-Source AI Software & Runtimes](./OPEN_SOURCE_AI_TOOLS.md)
+**Windows CMD**
+```bat
+start.bat
+```
 
-## ✅ Repository Rules
+**Linux / macOS**
+```bash
+bash start.sh
+```
 
-This repository intentionally excludes:
-- Paid-only software/services
-- Trial-only products
-- Gated models
-- Hosted proprietary AI services
-- Non-commercial / field-of-use restricted licenses
-- OpenRAIL and other non-OSI model licenses
+**Termux (Android)**
+```bash
+bash start-termux.sh
+```
 
-> **Important:** the automated model index is license-qualified, not a blanket OSI certification of every model entry.
+**Any terminal with Python 3**
+```bash
+python serve.py
+```
 
-## 📦 Browser model limitation
+The server prints the browser address and a LAN address. Open the displayed URL in your browser.
 
-The complete model directory is much larger than the small browser list. A model must have compatible ONNX/Transformers.js files and fit the user's browser hardware to run directly on the web.
+### How it works
 
-## 🔄 Automatic Updates
+The server only serves the web files. Supported ONNX models are loaded by Transformers.js and inference happens in the browser. The first model load downloads model files into the browser cache.
 
-GitHub Actions refreshes the model directory weekly.
+### Browser model limitation
 
-## 📜 License / Legal
+Only browser-compatible ONNX models are directly runnable in the web app. The full open-source model directory contains many more models that may require a different runtime.
 
-Always read the individual model card/license before redistribution or commercial use.
+## 📚 Directory
+
+- [Open-Source AI Model Index](./OPEN_SOURCE_AI_MODELS.md)
+- [Open-Source AI Software & Runtimes](./OPEN_SOURCE_AI_TOOLS.md)
