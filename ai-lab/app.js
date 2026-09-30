@@ -1,32 +1,142 @@
-const $=id=>document.getElementById(id);
-function addMessage(role,text){const el=document.createElement("div");el.className="msg "+role;el.textContent=text;$("messages").appendChild(el);el.scrollIntoView({behavior:"smooth"});}
-function setStatus(t){$("status").textContent=t;}
-async function api(path,opts={}){const r=await fetch(path,opts);if(!r.ok)throw new Error(await r.text());return r.json();}
-async function loadOllamaModels(){const s=$("model");s.innerHTML="";try{const d=await api("/api/ollama/models");if(!d.models.length){s.innerHTML='<option value="">No local models installed</option>';setStatus("Ollama detected; install a local model first.");return;}for(const m of d.models){const o=document.createElement("option");o.value=m.name;o.textContent=m.name;s.appendChild(o);}setStatus("Ollama ready — inference stays on your PC.");}catch(e){s.innerHTML='<option value="">Ollama unavailable</option>';setStatus("Ollama not reachable. Start Ollama or switch to Hugging Face Local.");}}
-$("runtime").addEventListener("change",()=>{const hf=$("runtime").value==="huggingface";$("model").classList.toggle("hidden",hf);$("refresh").classList.toggle("hidden",hf);$("hfModel").classList.toggle("hidden",!hf);if(!hf)loadOllamaModels();else setStatus("Hugging Face Local — weights run on your PC.");});
-$("refresh").addEventListener("click",loadOllamaModels);
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2";
 
-$("searchBtn").addEventListener("click",async ()=>{
-  const q=$("search").value.trim();
-  if(!q) return;
-  try{
-    const d=await api("/api/catalog/search?q="+encodeURIComponent(q)+"&limit=100");
-    const s=$("catalog"); s.innerHTML="";
-    for(const m of d.models){
-      const o=document.createElement("option");
-      o.value=m.name;
-      o.textContent=m.name+" — "+m.category;
-      s.appendChild(o);
-    }
-    setStatus(d.models.length ? d.models.length+" open-source models found. Select one." : "No matching open-source models found.");
-  }catch(e){ setStatus("Catalog search failed: "+e.message); }
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+const $ = (id) => document.getElementById(id);
+let generator = null;
+let activeModel = "";
+
+const MODEL_FILE = "./models.json";
+
+function setStatus(text, tone="normal") {
+  const el = $("status");
+  el.textContent = text;
+  el.dataset.tone = tone;
+}
+
+function addMessage(role, text) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  el.textContent = text;
+  $("messages").appendChild(el);
+  el.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function taskInstruction(task) {
+  const map = {
+    chat: "Answer the user naturally and clearly.",
+    explain: "Explain the user's request simply and step by step.",
+    summarize: "Summarize the user's text accurately and briefly.",
+    rewrite: "Rewrite the user's text clearly while keeping its meaning.",
+    code: "Help with the user's programming request and provide usable code."
+  };
+  return map[task] || map.chat;
+}
+
+function extractText(output) {
+  const value = output?.[0]?.generated_text;
+  if (Array.isArray(value)) {
+    const last = value[value.length - 1];
+    return last?.content ?? JSON.stringify(last);
+  }
+  if (typeof value === "string") return value;
+  return String(value ?? "");
+}
+
+async function loadModels() {
+  const data = await fetch(MODEL_FILE).then(r => {
+    if (!r.ok) throw new Error("Could not load model list.");
+    return r.json();
+  });
+
+  const select = $("model");
+  select.innerHTML = "";
+  for (const item of data) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name;
+    option.title = item.note || "";
+    select.appendChild(option);
+  }
+}
+
+async function loadModel() {
+  const model = $("customModel").value.trim() || $("model").value;
+  if (!model) return;
+
+  $("load").disabled = true;
+  setStatus("Loading model… first load can take time and use storage.", "busy");
+
+  try {
+    const device = "gpu" in navigator ? "webgpu" : "wasm";
+    generator = await pipeline("text-generation", model, {
+      device,
+      dtype: device === "webgpu" ? "q4f16" : "q8"
+    });
+    activeModel = model;
+    setStatus("Model loaded. Inference runs in this browser.", "ok");
+  } catch (error) {
+    generator = null;
+    activeModel = "";
+    setStatus("Model load failed. Try the default model or another browser-compatible ONNX model.", "error");
+    addMessage("ai", "Model error: " + (error?.message || error));
+  } finally {
+    $("load").disabled = false;
+  }
+}
+
+$("load").addEventListener("click", loadModel);
+$("clear").addEventListener("click", () => {
+  $("messages").innerHTML = '<div class="welcome"><h2>Chat cleared</h2><p>Ask something new.</p></div>';
+});
+$("temperature").addEventListener("input", () => {
+  $("tempValue").textContent = $("temperature").value;
+});
+$("model").addEventListener("change", () => {
+  $("customModel").value = "";
+});
+$("customModel").addEventListener("input", () => {
+  if ($("customModel").value.trim()) $("model").selectedIndex = -1;
 });
 
-$("catalog").addEventListener("change",()=>{
-  const id=$("catalog").value;
-  if(id){ $("runtime").value="huggingface"; $("model").classList.add("hidden"); $("refresh").classList.add("hidden"); $("hfModel").classList.remove("hidden"); $("hfModel").value=id; setStatus("Selected "+id+". It will run locally when supported."); }
+$("chatForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const prompt = $("prompt").value.trim();
+  if (!prompt) return;
+  if (!generator) {
+    addMessage("ai", "Pehle model select karke Load model dabao.");
+    return;
+  }
+
+  addMessage("user", prompt);
+  $("prompt").value = "";
+  $("send").disabled = true;
+  $("send").textContent = "…";
+
+  try {
+    const instruction = taskInstruction($("task").value);
+    const messages = [
+      { role: "system", content: instruction },
+      { role: "user", content: prompt }
+    ];
+    setStatus("Generating with " + activeModel + "…", "busy");
+    const output = await generator(messages, {
+      max_new_tokens: 256,
+      do_sample: true,
+      temperature: Number($("temperature").value),
+      top_p: 0.9,
+      repetition_penalty: 1.05
+    });
+    addMessage("ai", extractText(output));
+    setStatus("Done — inference stayed in the browser.", "ok");
+  } catch (error) {
+    addMessage("ai", "Generation error: " + (error?.message || error));
+    setStatus("Generation failed.", "error");
+  } finally {
+    $("send").disabled = false;
+    $("send").textContent = "Send";
+  }
 });
-$("clear").addEventListener("click",()=>{$("messages").innerHTML="";});
-$("temperature").addEventListener("input",()=>$("tempValue").textContent=$("temperature").value);
-$("chatForm").addEventListener("submit",async e=>{e.preventDefault();const prompt=$("prompt").value.trim();if(!prompt)return;addMessage("user",prompt);$("prompt").value="";$("send").disabled=true;$("send").textContent="…";try{const runtime=$("runtime").value;const model=runtime==="ollama"?$("model").value:$("hfModel").value.trim();if(!model)throw new Error("Select or enter a model first.");const d=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({runtime,model,task:$("task").value,temperature:Number($("temperature").value),prompt})});addMessage("ai",d.response);}catch(err){addMessage("ai","Error: "+err.message);}finally{$("send").disabled=false;$("send").textContent="Send";}});
-loadOllamaModels();
+
+loadModels().catch(error => setStatus(error.message, "error"));
